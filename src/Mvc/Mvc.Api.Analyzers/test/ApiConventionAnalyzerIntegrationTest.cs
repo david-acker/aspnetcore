@@ -25,6 +25,10 @@ public class ApiConventionAnalyzerIntegrationTest
         => RunNoDiagnosticsAreReturned();
 
     [Fact]
+    public Task NoDiagnosticsAreReturned_ForApiController_WithAllDocumentedStatusCodesInDocumentationComment()
+        => RunNoDiagnosticsAreReturned();
+
+    [Fact]
     public Task NoDiagnosticsAreReturned_ForOkResultReturningAction()
         => RunNoDiagnosticsAreReturned();
 

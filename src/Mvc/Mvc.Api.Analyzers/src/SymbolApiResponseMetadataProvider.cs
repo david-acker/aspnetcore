@@ -4,7 +4,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Xml.Linq;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Microsoft.AspNetCore.Mvc.Api.Analyzers;
 
@@ -22,6 +24,14 @@ internal static class SymbolApiResponseMetadataProvider
         IMethodSymbol method)
     {
         var metadataItems = GetResponseMetadataFromMethodAttributes(symbolCache, method);
+
+        var commentMetadataItems = GetResponseMetadataFromDocumentationComment(method);
+
+        foreach (var commentMetadataItem in commentMetadataItems)
+        {
+            metadataItems.Add(commentMetadataItem);
+        }
+
         if (metadataItems.Count != 0)
         {
             return metadataItems;
@@ -153,6 +163,53 @@ internal static class SymbolApiResponseMetadataProvider
         if (producesDefaultResponse != null)
         {
             metadataItems.Add(DeclaredApiResponseMetadata.ForProducesDefaultResponse(producesDefaultResponse, methodSymbol));
+        }
+
+        return metadataItems;
+    }
+
+    private static IList<DeclaredApiResponseMetadata> GetResponseMetadataFromDocumentationComment(IMethodSymbol methodSymbol)
+    {
+        var metadataItems = new List<DeclaredApiResponseMetadata>();
+
+        var methodDeclarationSyntax = methodSymbol.DeclaringSyntaxReferences.FirstOrDefault();
+        if (methodDeclarationSyntax == null)
+        {
+            return metadataItems;
+        }
+
+        var xmlTrivia = methodDeclarationSyntax
+            .GetSyntax()
+            .GetLeadingTrivia()
+            .Select(i => i.GetStructure())
+            .OfType<DocumentationCommentTriviaSyntax>()
+            .FirstOrDefault();
+
+        if (xmlTrivia == null)
+        {
+            return metadataItems;
+        }
+
+        var responseTags = xmlTrivia.ChildNodes()
+            .OfType<XmlElementSyntax>()
+            .Where(i => i.StartTag.Name.ToString().Equals("response"));
+
+        foreach (var responseTag in responseTags)
+        {
+            var responseTagStatusCodes = responseTag.StartTag.Attributes
+                .OfType<XmlTextAttributeSyntax>()
+                .Where(x => x.Name.LocalName.Text == "code")
+                .Select(x => x.TextTokens.ToString());
+
+            foreach (var responseTagStatusCode in responseTagStatusCodes)
+            {
+                if (!string.IsNullOrWhiteSpace(responseTagStatusCode) &&
+                    int.TryParse(responseTagStatusCode, out var statusCode))
+                {
+                    var metadata = DeclaredApiResponseMetadata.ForProducesResponseType(statusCode, null, attributeSource: methodSymbol);
+                    metadataItems.Add(metadata);
+                }
+            }
         }
 
         return metadataItems;
