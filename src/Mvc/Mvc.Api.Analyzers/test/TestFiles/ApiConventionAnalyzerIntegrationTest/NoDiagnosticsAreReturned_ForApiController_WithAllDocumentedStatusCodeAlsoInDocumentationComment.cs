@@ -8,11 +8,14 @@ using Microsoft.AspNetCore.Mvc;
 namespace Microsoft.AspNetCore.Mvc.Api.Analyzers
 {
     [ApiController]
-    public class NoDiagnosticsAreReturned_ForApiController_WithAllDocumentedStatusCodesInDocumentationComment : ControllerBase
+    public class NoDiagnosticsAreReturned_ForApiController_WithAllDocumentedStatusCodeAlsoInDocumentationComment : ControllerBase
     {
         /// <response code="200">Success</response>
         /// <response code="400">Bad Request</response>
         /// <response code="404">Not Found</response>
+        [ProducesResponseType(typeof(string), 200)]
+        [ProducesResponseType(typeof(string), 400)]
+        [ProducesResponseType(typeof(string), 404)]
         public IActionResult Put(int id, object model)
         {
             if (id == 0)
