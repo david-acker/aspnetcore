@@ -30,6 +30,32 @@ void Hello() { }
     }
 
     [Fact]
+    public async Task DuplicateRoutes_SameHttpMethodOnController_HasDiagnostics()
+    {
+        // Arrange
+        var source = @"
+using Microsoft.AspNetCore.Mvc;
+
+[ApiController]
+public class MyController : ControllerBase
+{
+    [HttpGet]
+    public IActionResult Get() => Ok();
+
+    [HttpGet({|#0:""""|})]
+    public IActionResult Get2() => Ok();
+}
+";
+
+        var expectedDiagnostics = new[] {
+            new DiagnosticResult(DiagnosticDescriptors.AmbiguousRouteHandlerRoute).WithArguments("").WithLocation(0)
+        };
+
+        // Act & Assert
+        await VerifyCS.VerifyAnalyzerAsync(source, expectedDiagnostics);
+    }
+
+    [Fact]
     public async Task DuplicateRoutes_SameHttpMethod_HasRequestDelegate_HasDiagnostics()
     {
         // Arrange
